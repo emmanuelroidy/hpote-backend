@@ -1,4 +1,3 @@
-
 package com.hpote.backend.common;
 
 import jakarta.servlet.FilterChain;
@@ -13,7 +12,6 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.hpote.backend.user.service.CustomUserDetails;
-
 
 import java.io.IOException;
 
@@ -31,9 +29,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        String path = request.getServletPath();
+
+        // Skip JWT processing for public endpoints
+        if (path.startsWith("/api/users/login") ||
+            path.startsWith("/api/users/register") ||
+            path.startsWith("/api/public/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            // No token provided, continue as anonymous
             filterChain.doFilter(request, response);
             return;
         }
