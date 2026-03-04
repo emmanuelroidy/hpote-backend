@@ -109,7 +109,7 @@ public class UserService {
     }
 
     // ================= FORGOT PASSWORD =================
-    public void forgotPassword(String email) {
+    public String forgotPassword(String email) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiExceptionDto("User not found with this email"));
@@ -121,10 +121,12 @@ public class UserService {
 
         userRepository.save(user);
 
-        sendOtpEmail(user.getEmail(), otp);
+       // sendOtpEmail(user.getEmail(), otp);
+
+        return otp;
     }
 
-    private void sendOtpEmail(String email, String otp) {
+    private String sendOtpEmail(String email, String otp) {
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -139,9 +141,11 @@ public class UserService {
 
             mailSender.send(message);
 
+                return otp;
+
         } catch (Exception e) {
             //throw new ApiExceptionDto("Failed to send OTP email");
-            throw new ApiExceptionDto("Failed to send OTP email: " + e.getMessage());
+            throw new ApiExceptionDto("Failed to send OTP email: "+ otp + e.getMessage());
         }
     }
 

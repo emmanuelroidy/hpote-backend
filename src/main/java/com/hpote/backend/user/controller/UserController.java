@@ -64,10 +64,10 @@ public class UserController {
     public ResponseEntity<ApiResponseDto<Object>> forgotPassword(
             @RequestBody ForgotPasswordRequest request) {
 
-        userService.forgotPassword(request.getEmail());
+       String otp = userService.forgotPassword(request.getEmail());
 
         return ResponseEntity.ok(
-                new ApiResponseDto<>(true, 200, "OTP sent to email", null));
+                new ApiResponseDto<>(true, 200, "OTP sent to email", otp));
     }
 
     @PostMapping("/reset-password")
