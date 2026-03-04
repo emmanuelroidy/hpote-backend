@@ -40,6 +40,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/users/login",
                     "/api/users/register",
+                    "/api/users/forgot-password",
+                    "/api/users/reset-password",
                     "/api/public/**"
                 ).permitAll()
                 // All other endpoints require authentication

@@ -1,10 +1,11 @@
 package com.hpote.backend.user.controller;
 
-
 import com.hpote.backend.common.ApiResponseDto;
 import com.hpote.backend.professional.models.ProfessionalProfile;
+import com.hpote.backend.user.dto.ForgotPasswordRequest;
 import com.hpote.backend.user.dto.LoginRequest;
 import com.hpote.backend.user.dto.LoginResponse;
+import com.hpote.backend.user.dto.ResetPasswordRequest;
 import com.hpote.backend.user.dto.UserRegisterRequest;
 import lombok.RequiredArgsConstructor;
 
@@ -39,8 +40,7 @@ public class UserController {
     @PostMapping("/login")
     @PermitAll
     public ResponseEntity<ApiResponseDto<LoginResponse>> login(
-            @RequestBody LoginRequest request
-    ) {
+            @RequestBody LoginRequest request) {
 
         LoginResponse response = userService.login(request);
         return ResponseEntity.ok(new ApiResponseDto<LoginResponse>(true, 200, "Login successful", response));
@@ -59,5 +59,29 @@ public class UserController {
         return ResponseEntity.ok(new ApiResponseDto<List<User>>(true, 200, "Users retrieved successfully", users));
     }
 
-   
+    @PostMapping("/forgot-password")
+    @PermitAll
+    public ResponseEntity<ApiResponseDto<Object>> forgotPassword(
+            @RequestBody ForgotPasswordRequest request) {
+
+        userService.forgotPassword(request.getEmail());
+
+        return ResponseEntity.ok(
+                new ApiResponseDto<>(true, 200, "OTP sent to email", null));
+    }
+
+    @PostMapping("/reset-password")
+    @PermitAll
+    public ResponseEntity<ApiResponseDto<Object>> resetPassword(
+            @RequestBody ResetPasswordRequest request) {
+
+        userService.resetPassword(
+                request.getEmail(),
+                request.getOtp(),
+                request.getNewPassword());
+
+        return ResponseEntity.ok(
+                new ApiResponseDto<>(true, 200, "Password reset successful", null));
+    }
+
 }

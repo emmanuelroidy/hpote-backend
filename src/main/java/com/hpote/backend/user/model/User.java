@@ -1,5 +1,6 @@
 package com.hpote.backend.user.model;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -37,7 +38,8 @@ public class User extends BaseEntity {
 
     private Double rating = 0.0;
 
-
+    private String resetOtp;
+    private LocalDateTime otpExpiryTime;
 
     @ManyToMany
     @JoinTable(
