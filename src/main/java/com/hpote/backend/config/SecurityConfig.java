@@ -2,6 +2,7 @@ package com.hpote.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,6 +18,7 @@ import com.hpote.backend.user.service.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableWebSecurity
@@ -26,9 +28,14 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetails userDetailsService;
 
+    @Value("${app.cors.allowed-origins:http://localhost:4200,http://127.0.0.1:4200,http://localhost:5000,http://127.0.0.1:5000}")
+    private String[] allowedOrigins;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors(Customizer.withDefaults())
+
             // Disable CSRF because we're stateless (JWT)
             .csrf(csrf -> csrf.disable())
 
@@ -47,6 +54,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/professions").permitAll()
                 .requestMatchers("/api/users/all").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
@@ -65,15 +73,15 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Global CORS configuration for Render / Flutter apps
+    // Allow browser apps to call the API; production origins can be configured through app.cors.allowed-origins.
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")                // all endpoints
-                        .allowedOrigins("*")              // allow all origins; for production, replace * with your frontend URL
-                        .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
+                        .allowedOrigins(allowedOrigins)
+                        .allowedMethods("GET","POST","PUT","PATCH","DELETE","OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(false)
                         .maxAge(3600);

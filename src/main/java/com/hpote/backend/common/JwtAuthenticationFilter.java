@@ -15,6 +15,7 @@ import com.hpote.backend.user.service.CustomUserDetails;
 
 import java.io.IOException;
 import io.jsonwebtoken.JwtException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 @Component
 @RequiredArgsConstructor
@@ -61,7 +62,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            UserDetails userDetails;
+            try {
+                userDetails = userDetailsService.loadUserByUsername(username);
+            } catch (UsernameNotFoundException exception) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired bearer token");
+                return;
+            }
 
             boolean valid;
             try {
@@ -71,7 +78,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            if (valid) {
+            if (valid && userDetails.isEnabled()) {
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -84,6 +91,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else if (!userDetails.isEnabled()) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Account is blocked");
+                return;
             }
         }
 

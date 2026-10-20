@@ -14,7 +14,9 @@ public class ProfessionService {
     private final ProfessionRepository professionRepository;
 
     public List<Profession> getAllProfessions() {
-        return professionRepository.findAll();
+        return professionRepository.findAll().stream()
+                .filter(profession -> Boolean.TRUE.equals(profession.getIsActive()))
+                .toList();
     }
 
 }

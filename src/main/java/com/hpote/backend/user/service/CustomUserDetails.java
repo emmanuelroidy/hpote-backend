@@ -21,13 +21,14 @@ import com.hpote.backend.common.ApiExceptionDto;
             User user = userRepository.findByEmail(username)
                     .or(() -> userRepository.findByPhone(username))
                     .orElseThrow(() ->
-                      new ApiExceptionDto("User not found"));
+                      new UsernameNotFoundException("User not found"));
                     
 
             return org.springframework.security.core.userdetails.User
                     .withUsername(username)
                     .password(user.getPassword())
                     .authorities("ROLE_" + user.getRole().getName())
+                    .disabled(!user.isEnabled())
                     .build();
         }
     }

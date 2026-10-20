@@ -70,11 +70,15 @@ public class UserService {
             for (UUID id : request.getProfessionIds()) {
                 professionIdStrings.add(String.valueOf(id));
             }
+            if (professionIdStrings.size() != request.getProfessionIds().size()) {
+                throw new ApiExceptionDto("Duplicate profession IDs are not allowed");
+            }
 
             professions = new HashSet<>(
                     professionRepository.findAllById(professionIdStrings));
 
-            if (professions.isEmpty()) {
+            if (professions.size() != professionIdStrings.size()
+                    || professions.stream().anyMatch(profession -> !Boolean.TRUE.equals(profession.getIsActive()))) {
                 throw new ApiExceptionDto("Invalid profession IDs");
             }
         }
@@ -102,6 +106,9 @@ public class UserService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ApiExceptionDto("Invalid credentials");
+        }
+        if (!user.isEnabled()) {
+            throw new ApiExceptionDto("Account is blocked");
         }
 
         String token = jwtUtil.generateToken(user);

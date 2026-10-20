@@ -38,6 +38,10 @@ public class User extends BaseEntity {
 
     private Double rating = 0.0;
 
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean enabled = true;
+
     private String resetOtp;
     private LocalDateTime otpExpiryTime;
 

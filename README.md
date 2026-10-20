@@ -23,6 +23,7 @@ Configure these environment variables before starting the application:
 | `MAIL_USERNAME` | SMTP account |
 | `MAIL_PASSWORD` | SMTP account password |
 | `PORT` | Optional HTTP port; defaults to `8080` |
+| `APP_CORS_ALLOWED_ORIGINS` | Optional comma-separated browser origins; defaults to local portal and Flutter web URLs |
 
 Start locally with `./mvnw spring-boot:run` and run tests with `./mvnw test`.
 The application initializes the default roles, professions, and service states
@@ -100,3 +101,53 @@ Professionals respond with a quote; currency is a three-letter ISO code:
 Requests move through `OPEN`, `ACCEPTED`, `IN_PROGRESS`, and `COMPLETED`, or
 from `OPEN` to `CANCELLED`. Once an owner accepts a response, other responses
 are closed and only that professional can advance the job.
+
+## Administration API
+
+All `/api/admin/**` routes require a JWT for a user with role `ADMIN`. Responses
+use the standard envelope (`success`, `statusCode`, `message`, `data`). User
+objects are safe DTOs and include `enabled`, `professionIds`, and profession
+names, plus `createdAt` as the account's join date (never the password or reset
+credentials). IDs must be UUIDs.
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/admin/overview` | Exact user, role, enabled/blocked, profession, and service-request counts |
+| `GET` | `/api/admin/users` | List users |
+| `GET` | `/api/admin/users/{id}` | Get a user |
+| `PATCH` | `/api/admin/users/{id}/status` | Enable or block with `{"enabled":false}` |
+| `PUT` | `/api/admin/users/{id}/role` | Assign `NORMAL`, `PROFESSIONAL`, or `ADMIN` with `{"role":"PROFESSIONAL","professionIds":["<uuid>"]}` |
+| `PUT` | `/api/admin/users/{id}/professions` | Set a professional's professions with `{"professionIds":["<uuid>"]}` |
+| `GET` | `/api/admin/professions` | List all professions, including inactive ones |
+| `POST` | `/api/admin/professions` | Create with `{"name":"Painter","description":"...","isActive":true}` |
+| `PUT` | `/api/admin/professions/{id}` | Replace name/description, optionally set `isActive` |
+| `PATCH` | `/api/admin/professions/{id}/status` | Set activation with `{"isActive":false}` |
+| `DELETE` | `/api/admin/professions/{id}` | Deactivate (soft delete; preserves historical references) |
+
+Duplicate profession assignments and duplicate profession names are rejected;
+only active professions can be assigned. A professional must retain at least
+one profession. Supply `professionIds` when changing a user to `PROFESSIONAL`
+if they do not already have an assignment. The API prevents self-blocking/self-demotion and blocking or
+demoting the last administrator. Changing a user away from `PROFESSIONAL`
+clears their profession assignments. The public `GET /api/professions` only
+returns active professions.
+
+## Request-photo upload
+
+`POST /api/media/images` accepts authenticated multipart form data with the
+field name `file`. JPEG and PNG images up to 5 MB are accepted; file content
+and image dimensions are validated. The response is an API envelope with
+`data.url`, ready to store as the service request's `pictureUrl`:
+
+```json
+{"success":true,"statusCode":200,"message":"Image uploaded","data":{"url":"/api/media/images/<uuid>"}}
+```
+
+By default this URL is relative to the API origin, so clients should resolve
+it against their configured backend base URL. Set `APP_MEDIA_PUBLIC_BASE_URL`
+to the externally reachable API origin to receive an absolute URL instead.
+Files are stored under `APP_MEDIA_UPLOAD_DIR` (default
+`uploads/customer-requests`); mount/persist that directory in deployments.
+`GET /api/media/images/{uuid}` serves the image and requires a valid bearer
+token as request photos may contain personal information. Configure
+`APP_MEDIA_PUBLIC_BASE_URL` when clients need an absolute image URL.

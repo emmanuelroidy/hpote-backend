@@ -1,6 +1,7 @@
 package com.hpote.backend.common;
 
 import jakarta.annotation.PostConstruct;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -57,5 +58,13 @@ public class DataInitializer {
                     .orElseGet(() -> serviceStatusRepository.save(
                             ServiceStatus.builder().name(name).build()));
         }
+
+    }
+
+    @PostConstruct
+    public void activateLegacyProfessions() {
+        List<Profession> legacyProfessions = professionRepository.findByIsActiveIsNull();
+        legacyProfessions.forEach(profession -> profession.setIsActive(true));
+        professionRepository.saveAll(legacyProfessions);
     }
 }

@@ -23,4 +23,14 @@ public interface UserRepository extends JpaRepository<User, String> {
      * @return Optional<User>
      */
     Optional<User> findByEmail(String email);
+
+    long countByRole_Name(String roleName);
+
+    long countByRole_NameAndEnabled(String roleName, boolean enabled);
+
+    long countByRole_NameAndIdNot(String roleName, String id);
+
+    long countByEnabled(boolean enabled);
+
+    boolean existsByProfessions_Id(String professionId);
 }
