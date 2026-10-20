@@ -1,6 +1,8 @@
 package com.hpote.backend.user.dto;
 
 import com.hpote.backend.user.model.User;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import lombok.Builder;
 import lombok.Value;
@@ -15,6 +17,7 @@ public class UserView {
     String role;
     String profilePhoto;
     Double rating;
+    Set<String> professionIds;
 
     public static UserView from(User user) {
         return UserView.builder()
@@ -25,6 +28,9 @@ public class UserView {
                 .role(user.getRole().getName())
                 .profilePhoto(user.getProfilePhoto())
                 .rating(user.getRating())
+                .professionIds(user.getProfessions().stream()
+                        .map(profession -> profession.getId())
+                        .collect(Collectors.toSet()))
                 .build();
     }
 }

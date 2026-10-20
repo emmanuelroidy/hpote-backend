@@ -3,6 +3,7 @@ package com.hpote.backend.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -44,6 +45,7 @@ public class SecurityConfig {
                     "/api/users/reset-password",
                     "/api/public/**"
                 ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/professions").permitAll()
                 .requestMatchers("/api/users/all").hasRole("ADMIN")
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
