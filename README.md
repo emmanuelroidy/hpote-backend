@@ -28,6 +28,10 @@ Start locally with `./mvnw spring-boot:run` and run tests with `./mvnw test`.
 The application initializes the default roles, professions, and service states
 on startup. Hibernate currently updates the schema automatically.
 
+For the Postman collection and request-by-request walkthrough, see the
+[Postman API guide](./docs/POSTMAN-API-GUIDE.md) and import
+[HpOtE.postman_collection.json](./postman/HpOtE.postman_collection.json).
+
 ## Authentication and onboarding
 
 Register at `POST /api/users/register`, then authenticate at
