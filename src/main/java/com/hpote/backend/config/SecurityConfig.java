@@ -44,6 +44,7 @@ public class SecurityConfig {
                     "/api/users/reset-password",
                     "/api/public/**"
                 ).permitAll()
+                .requestMatchers("/api/users/all").hasRole("ADMIN")
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )

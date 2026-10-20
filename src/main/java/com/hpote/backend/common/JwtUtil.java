@@ -7,25 +7,26 @@ import io.jsonwebtoken.security.Keys;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 import java.util.Date;
 import java.util.UUID;
 
 @Component
 public class JwtUtil {
 
-    private final String SECRET = "hpote_super_secure_jwt_secret_key_2026_very_strong!!"; // Should be moved to
-                                                                                          // application.properties
+    @Value("${app.jwt.secret}")
+    private String secret;
     private final long EXPIRATION = 86400000; // 1 day
 
     public String generateToken(User user) {
 
         return Jwts.builder()
-                .setSubject(user.getEmail())
+                .setSubject(user.getEmail() != null ? user.getEmail() : user.getPhone())
                 .claim("role", user.getRole().getName())
                 .claim("userId", user.getId())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
-                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes()), SignatureAlgorithm.HS256)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -36,11 +37,11 @@ public class JwtUtil {
                         .build()
                         .parseClaimsJws(token)
                         .getBody()
-                        .getSubject());
+                        .get("userId", String.class));
     }
 
     private java.security.Key getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET.getBytes());
+        return Keys.hmacShaKeyFor(secret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     public String extractUsername(String token) {

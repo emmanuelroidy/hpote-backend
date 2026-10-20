@@ -8,6 +8,8 @@ import com.hpote.backend.professional.models.Profession;
 import com.hpote.backend.user.model.UserRole;
 import com.hpote.backend.user.repository.UserRoleRepository;
 import com.hpote.backend.professional.repository.ProfessionRepository;
+import com.hpote.backend.service.models.ServiceStatus;
+import com.hpote.backend.service.repository.ServiceStatusRepository;
 
 @Component
 @RequiredArgsConstructor
@@ -15,6 +17,7 @@ public class DataInitializer {
 
     private final UserRoleRepository userRoleRepository;
     private final ProfessionRepository professionRepository;
+    private final ServiceStatusRepository serviceStatusRepository;
 
     @PostConstruct
     public void initUserRoles() {
@@ -47,6 +50,12 @@ public class DataInitializer {
                     Profession.builder().name(name).build()
                 ));
         }
+
+        String[] serviceStatuses = {"OPEN", "ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"};
+        for (String name : serviceStatuses) {
+            serviceStatusRepository.findByName(name)
+                    .orElseGet(() -> serviceStatusRepository.save(
+                            ServiceStatus.builder().name(name).build()));
+        }
     }
 }
-

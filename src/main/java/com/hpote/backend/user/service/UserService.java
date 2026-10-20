@@ -8,11 +8,12 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,8 @@ import com.hpote.backend.common.ApiExceptionDto;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -53,6 +56,9 @@ public class UserService {
         UserRole role = userRoleRepository
                 .findByName(request.getRole().toUpperCase())
                 .orElseThrow(() -> new ApiExceptionDto("Role not found: " + request.getRole()));
+        if (!"NORMAL".equals(role.getName()) && !"PROFESSIONAL".equals(role.getName())) {
+            throw new ApiExceptionDto("This role cannot be assigned through public registration");
+        }
 
         if ("PROFESSIONAL".equalsIgnoreCase(role.getName())) {
 
@@ -109,24 +115,22 @@ public class UserService {
     }
 
     // ================= FORGOT PASSWORD =================
-    public String forgotPassword(String email) {
+    public void forgotPassword(String email) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiExceptionDto("User not found with this email"));
 
-        String otp = String.valueOf(new Random().nextInt(900000) + 100000);
+        String otp = String.valueOf(SECURE_RANDOM.nextInt(900000) + 100000);
 
-        user.setResetOtp(otp);
+        user.setResetOtp(passwordEncoder.encode(otp));
         user.setOtpExpiryTime(LocalDateTime.now().plusMinutes(10));
 
         userRepository.save(user);
 
-       // sendOtpEmail(user.getEmail(), otp);
-
-        return otp;
+        sendOtpEmail(user.getEmail(), otp);
     }
 
-    private String sendOtpEmail(String email, String otp) {
+    private void sendOtpEmail(String email, String otp) {
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -141,11 +145,8 @@ public class UserService {
 
             mailSender.send(message);
 
-                return otp;
-
-        } catch (Exception e) {
-            //throw new ApiExceptionDto("Failed to send OTP email");
-            throw new ApiExceptionDto("Failed to send OTP email: "+ otp + e.getMessage());
+        } catch (MailException e) {
+            throw new ApiExceptionDto("Failed to send OTP email");
         }
     }
 
@@ -155,7 +156,7 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiExceptionDto("User not found with this email"));
 
-        if (user.getResetOtp() == null || !user.getResetOtp().equals(otp)) {
+        if (user.getResetOtp() == null || !passwordEncoder.matches(otp, user.getResetOtp())) {
             throw new ApiExceptionDto("Invalid OTP");
         }
 

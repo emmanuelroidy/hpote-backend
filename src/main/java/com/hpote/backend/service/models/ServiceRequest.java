@@ -34,4 +34,7 @@ public class ServiceRequest extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "status_id")
     private ServiceStatus status;
+
+    @Version
+    private Long version;
 }

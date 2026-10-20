@@ -1,17 +1,20 @@
 package com.hpote.backend.user.controller;
 
 import com.hpote.backend.common.ApiResponseDto;
-import com.hpote.backend.professional.models.ProfessionalProfile;
 import com.hpote.backend.user.dto.ForgotPasswordRequest;
 import com.hpote.backend.user.dto.LoginRequest;
 import com.hpote.backend.user.dto.LoginResponse;
 import com.hpote.backend.user.dto.ResetPasswordRequest;
 import com.hpote.backend.user.dto.UserRegisterRequest;
+import com.hpote.backend.user.dto.UserView;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import com.hpote.backend.user.model.User;
@@ -28,13 +31,9 @@ public class UserController {
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Validated @RequestBody UserRegisterRequest request) {
-        try {
-            User user = userService.registerUser(request);
-
-            return ResponseEntity.ok(new ApiResponseDto<User>(true, 200, "User registered successfully", user));
-        } catch (RuntimeException ex) {
-            return ResponseEntity.badRequest().body(new ApiResponseDto<Object>(false, 400, ex.getMessage(), null));
-        }
+        User user = userService.registerUser(request);
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "User registered successfully",
+                UserView.from(user)));
     }
 
     @PostMapping("/login")
@@ -48,32 +47,42 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponseDto<User>> getUserById(@PathVariable String id) {
+    public ResponseEntity<ApiResponseDto<UserView>> getUserById(
+            @PathVariable String id, Authentication authentication) {
         User user = userService.getUserById(id);
-        return ResponseEntity.ok(new ApiResponseDto<User>(true, 200, "User retrieved successfully", user));
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        if (!isAdmin && !authentication.getName().equals(user.getEmail())
+                && !authentication.getName().equals(user.getPhone())) {
+            throw new AccessDeniedException("You can only view your own account");
+        }
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "User retrieved successfully",
+                UserView.from(user)));
     }
 
     @GetMapping("/all")
-    public ResponseEntity<ApiResponseDto<List<User>>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        return ResponseEntity.ok(new ApiResponseDto<List<User>>(true, 200, "Users retrieved successfully", users));
+    public ResponseEntity<ApiResponseDto<List<UserView>>> getAllUsers() {
+        List<UserView> users = userService.getAllUsers().stream()
+                .map(UserView::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Users retrieved successfully", users));
     }
 
     @PostMapping("/forgot-password")
     @PermitAll
     public ResponseEntity<ApiResponseDto<Object>> forgotPassword(
-            @RequestBody ForgotPasswordRequest request) {
+            @Validated @RequestBody ForgotPasswordRequest request) {
 
-       String otp = userService.forgotPassword(request.getEmail());
+        userService.forgotPassword(request.getEmail());
 
         return ResponseEntity.ok(
-                new ApiResponseDto<>(true, 200, "OTP sent to email", otp));
+                new ApiResponseDto<>(true, 200, "If the account exists, a reset code has been sent", null));
     }
 
     @PostMapping("/reset-password")
     @PermitAll
     public ResponseEntity<ApiResponseDto<Object>> resetPassword(
-            @RequestBody ResetPasswordRequest request) {
+            @Validated @RequestBody ResetPasswordRequest request) {
 
         userService.resetPassword(
                 request.getEmail(),
