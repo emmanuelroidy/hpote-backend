@@ -1,6 +1,8 @@
 package com.hpote.backend.service.service;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -14,6 +16,7 @@ import com.hpote.backend.professional.repository.ProfessionalRepository;
 import com.hpote.backend.professional.repository.ProfessionRepository;
 import com.hpote.backend.service.dto.CreateServiceRequest;
 import com.hpote.backend.service.dto.CreateServiceResponse;
+import com.hpote.backend.service.dto.RequestNavigationView;
 import com.hpote.backend.service.dto.ServiceRequestView;
 import com.hpote.backend.service.dto.ServiceResponseView;
 import com.hpote.backend.service.models.ServiceRequest;
@@ -45,11 +48,30 @@ public class ServiceMarketplaceService {
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .orElseThrow(() -> new ApiExceptionDto("Profession not found or inactive"));
 
+        List<String> suppliedPhotos = new ArrayList<>();
+        if (input.getPictureUrls() != null) {
+            suppliedPhotos.addAll(input.getPictureUrls());
+        }
+        if (input.getPictureUrl() != null && !input.getPictureUrl().isBlank()) {
+            suppliedPhotos.add(0, input.getPictureUrl());
+        }
+        List<String> pictureUrls = new ArrayList<>(new LinkedHashSet<>(
+                suppliedPhotos.stream()
+                        .filter(url -> url != null && !url.isBlank())
+                        .map(String::trim)
+                        .toList()));
+        if (pictureUrls.size() > 5) {
+            throw new ApiExceptionDto("A service request can include up to 5 photos");
+        }
+
         ServiceRequest request = ServiceRequest.builder()
                 .requester(requester)
                 .profession(profession)
                 .description(input.getDescription().trim())
-                .pictureUrl(input.getPictureUrl())
+                .pictureUrl(pictureUrls.isEmpty() ? null : pictureUrls.get(0))
+                .additionalPictureUrls(pictureUrls.size() < 2
+                        ? new ArrayList<>()
+                        : new ArrayList<>(pictureUrls.subList(1, pictureUrls.size())))
                 .latitude(input.getLatitude())
                 .longitude(input.getLongitude())
                 .status(getStatus("OPEN"))
@@ -66,6 +88,24 @@ public class ServiceMarketplaceService {
                 .map(request -> ServiceRequestView.from(
                         request, acceptedProfessionalId(request.getId())))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ServiceRequestView> getAllRequestsForAdmin() {
+        return requestRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(request -> ServiceRequestView.from(
+                        request, acceptedProfessionalId(request.getId())))
+                .toList();
+    }
+
+    @Transactional
+    public ServiceRequestView cancelRequestForAdmin(String requestId) {
+        ServiceRequest request = findRequest(requestId);
+        if (!"OPEN".equals(request.getStatus().getName())) {
+            throw new ApiExceptionDto("Only an open request can be cancelled by an administrator");
+        }
+        request.setStatus(getStatus("CANCELLED"));
+        return ServiceRequestView.from(request, null);
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +141,51 @@ public class ServiceMarketplaceService {
                 .map(response -> ServiceRequestView.from(
                         response.getServiceRequest(), profile.getUser().getId()))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public RequestNavigationView getNavigationDetails(String username, String requestId) {
+        User caller = findUser(username);
+        ServiceRequest request = findRequest(requestId);
+        String status = request.getStatus().getName();
+        if (!"ACCEPTED".equals(status) && !"IN_PROGRESS".equals(status)) {
+            throw new ApiExceptionDto("Directions are available after a quote is accepted");
+        }
+
+        ServiceResponse accepted = responseRepository
+                .findByServiceRequestIdAndStatus(requestId, "ACCEPTED")
+                .orElseThrow(() -> new ApiExceptionDto("This request has no assigned professional"));
+        ProfessionalProfile profile = accepted.getProfessionalProfile();
+        boolean isRequester = request.getRequester().getId().equals(caller.getId());
+        boolean isAssignedProfessional = profile.getUser().getId().equals(caller.getId());
+        if (!isRequester && !isAssignedProfessional) {
+            throw new ApiExceptionDto("Only the customer and assigned professional can view directions");
+        }
+        if (request.getLatitude() == null || request.getLongitude() == null
+                || profile.getLatitude() == null || profile.getLongitude() == null) {
+            throw new ApiExceptionDto("Both saved locations are required before directions are available");
+        }
+
+        return RequestNavigationView.builder()
+                .requestId(request.getId())
+                .professionName(request.getProfession().getName())
+                .requesterName(request.getRequester().getName())
+                .professionalName(profile.getUser().getName())
+                .status(status)
+                .destinationName(isAssignedProfessional
+                        ? request.getRequester().getName() + "'s service location"
+                        : profile.getUser().getName() + "'s saved location")
+                .destinationLatitude(isAssignedProfessional
+                        ? request.getLatitude()
+                        : profile.getLatitude())
+                .destinationLongitude(isAssignedProfessional
+                        ? request.getLongitude()
+                        : profile.getLongitude())
+                .requesterLatitude(request.getLatitude())
+                .requesterLongitude(request.getLongitude())
+                .professionalLatitude(profile.getLatitude())
+                .professionalLongitude(profile.getLongitude())
+                .build();
     }
 
     @Transactional(readOnly = true)

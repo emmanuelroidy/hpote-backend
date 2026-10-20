@@ -23,6 +23,8 @@ import com.hpote.backend.admin.dto.UpdateUserStatusRequest;
 import com.hpote.backend.admin.service.AdminService;
 import com.hpote.backend.common.ApiResponseDto;
 import com.hpote.backend.professional.models.Profession;
+import com.hpote.backend.service.dto.ServiceRequestView;
+import com.hpote.backend.service.service.ServiceMarketplaceService;
 import com.hpote.backend.user.dto.UserView;
 
 import jakarta.validation.Valid;
@@ -35,10 +37,24 @@ import lombok.RequiredArgsConstructor;
 public class AdminController {
 
     private final AdminService adminService;
+    private final ServiceMarketplaceService marketplaceService;
 
     @GetMapping("/overview")
     public ResponseEntity<ApiResponseDto<AdminOverviewView>> overview() {
         return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Admin overview", adminService.overview()));
+    }
+
+    @GetMapping("/service-requests")
+    public ResponseEntity<ApiResponseDto<List<ServiceRequestView>>> serviceRequests() {
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Service requests retrieved",
+                marketplaceService.getAllRequestsForAdmin()));
+    }
+
+    @PostMapping("/service-requests/{requestId}/cancel")
+    public ResponseEntity<ApiResponseDto<ServiceRequestView>> cancelServiceRequest(
+            @PathVariable String requestId) {
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Service request cancelled",
+                marketplaceService.cancelRequestForAdmin(requestId)));
     }
 
     @GetMapping("/users")

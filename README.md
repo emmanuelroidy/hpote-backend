@@ -24,6 +24,7 @@ Configure these environment variables before starting the application:
 | `MAIL_PASSWORD` | SMTP account password |
 | `PORT` | Optional HTTP port; defaults to `8080` |
 | `APP_CORS_ALLOWED_ORIGINS` | Optional comma-separated browser origins; defaults to local portal and Flutter web URLs |
+| `GRAPHHOPPER_API_KEY` | Optional GraphHopper Directions API key; required for in-app routes and must stay on the backend |
 
 Start locally with `./mvnw spring-boot:run` and run tests with `./mvnw test`.
 The application initializes the default roles, professions, and service states
@@ -71,9 +72,15 @@ All routes below require a JWT.
 | `POST` | `/api/service-requests/{id}/responses` | Professional submits a quote |
 | `GET` | `/api/service-requests/{id}/responses` | Request owner views quotes |
 | `POST` | `/api/service-requests/{id}/responses/{responseId}/accept` | Request owner chooses a professional |
+| `GET` | `/api/service-requests/{id}/navigation` | Customer or assigned professional gets the other party's saved destination after acceptance |
+| `GET` | `/api/service-requests/{id}/route` | Get a GraphHopper route for an accepted request; query parameters: `fromLatitude`, `fromLongitude`, `profile` (`car`, `bike`, `foot`), and optional `weighting` (`recommended`, `fastest`, `shortest`) |
 | `POST` | `/api/service-requests/{id}/start` | Assigned professional starts the job |
 | `POST` | `/api/service-requests/{id}/complete` | Assigned professional marks the job complete |
 | `POST` | `/api/service-requests/{id}/cancel` | Request owner cancels an open request |
+
+Requests accept either the legacy `pictureUrl` string or a `pictureUrls` array
+with up to five authenticated image URLs. Responses include both fields so
+older clients continue to work; `pictureUrl` remains the first photo.
 
 Create a service request with a profession ID and location:
 
@@ -102,6 +109,13 @@ Requests move through `OPEN`, `ACCEPTED`, `IN_PROGRESS`, and `COMPLETED`, or
 from `OPEN` to `CANCELLED`. Once an owner accepts a response, other responses
 are closed and only that professional can advance the job.
 
+GraphHopper route requests are proxied by the authenticated backend so the API
+key is never shipped to the app. Set `GRAPHHOPPER_API_KEY` in the backend
+environment to enable in-app route geometry and turn instructions. The free
+GraphHopper Directions API tier still requires an API key. Without one, the app
+keeps the map and external map-app directions available and explains how to
+enable in-app routing.
+
 ## Administration API
 
 All `/api/admin/**` routes require a JWT for a user with role `ADMIN`. Responses
@@ -113,6 +127,8 @@ credentials). IDs must be UUIDs.
 | Method | Route | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/admin/overview` | Exact user, role, enabled/blocked, profession, and service-request counts |
+| `GET` | `/api/admin/service-requests` | List all marketplace requests, newest first, with requester, status, and photo URLs |
+| `POST` | `/api/admin/service-requests/{id}/cancel` | Cancel an open request during moderation |
 | `GET` | `/api/admin/users` | List users |
 | `GET` | `/api/admin/users/{id}` | Get a user |
 | `PATCH` | `/api/admin/users/{id}/status` | Enable or block with `{"enabled":false}` |

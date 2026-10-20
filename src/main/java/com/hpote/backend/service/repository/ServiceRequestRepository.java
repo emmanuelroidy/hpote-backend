@@ -9,6 +9,8 @@ import com.hpote.backend.service.models.ServiceRequest;
 
 public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, String> {
 
+    List<ServiceRequest> findAllByOrderByCreatedAtDesc();
+
     List<ServiceRequest> findByRequesterIdOrderByCreatedAtDesc(String requesterId);
 
     List<ServiceRequest> findByStatus_NameAndProfession_IdOrderByCreatedAtDesc(

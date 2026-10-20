@@ -25,6 +25,7 @@ import com.hpote.backend.professional.repository.ProfessionRepository;
 import com.hpote.backend.service.dto.CreateServiceRequest;
 import com.hpote.backend.service.dto.CreateServiceResponse;
 import com.hpote.backend.service.models.ServiceRequest;
+import com.hpote.backend.service.models.ServiceResponse;
 import com.hpote.backend.service.models.ServiceStatus;
 import com.hpote.backend.service.repository.ServiceRequestRepository;
 import com.hpote.backend.service.repository.ServiceResponseRepository;
@@ -71,6 +72,7 @@ class ServiceMarketplaceServiceTest {
         CreateServiceRequest input = new CreateServiceRequest();
         input.setProfessionId(profession.getId());
         input.setDescription("  Repair my tap  ");
+        input.setPictureUrls(List.of("/api/media/images/first", "/api/media/images/second"));
         input.setLatitude(-6.8);
         input.setLongitude(39.2);
 
@@ -85,6 +87,27 @@ class ServiceMarketplaceServiceTest {
         assertEquals("customer-id", created.getRequesterId());
         assertEquals("OPEN", created.getStatus());
         assertEquals("Repair my tap", created.getDescription());
+        assertEquals(List.of("/api/media/images/first", "/api/media/images/second"),
+                created.getPictureUrls());
+        assertEquals("/api/media/images/first", created.getPictureUrl());
+    }
+
+    @Test
+    void adminCanCancelOpenRequestButCannotChangeAnAssignedJob() {
+        ServiceRequest openRequest = request(profession("profession-id"),
+                user("customer-id", "customer@example.com", "NORMAL"));
+        openRequest.setId("request-id");
+        ServiceStatus cancelled = ServiceStatus.builder().name("CANCELLED").build();
+        when(requestRepository.findById("request-id")).thenReturn(Optional.of(openRequest));
+        when(statusRepository.findByName("CANCELLED")).thenReturn(Optional.of(cancelled));
+
+        var result = marketplaceService.cancelRequestForAdmin("request-id");
+
+        assertEquals("CANCELLED", result.getStatus());
+
+        openRequest.setStatus(ServiceStatus.builder().name("IN_PROGRESS").build());
+        assertThrows(ApiExceptionDto.class,
+                () -> marketplaceService.cancelRequestForAdmin("request-id"));
     }
 
     @Test
@@ -190,9 +213,50 @@ class ServiceMarketplaceServiceTest {
         assertEquals("DECLINED", competing.getStatus());
     }
 
-    private static com.hpote.backend.service.models.ServiceResponse response(
+    @Test
+    void returnsReciprocalNavigationDestinationsOnlyForAcceptedRequestParties() {
+        User customer = user("customer-id", "customer@example.com", "NORMAL");
+        User professional = user("professional-id", "pro@example.com", "PROFESSIONAL");
+        Profession profession = profession("profession-id");
+        ServiceRequest acceptedRequest = request(profession, customer);
+        acceptedRequest.setId("request-id");
+        acceptedRequest.setStatus(ServiceStatus.builder().name("ACCEPTED").build());
+        ProfessionalProfile profile = ProfessionalProfile.builder()
+                .user(professional)
+                .profession(profession)
+                .latitude(-6.75)
+                .longitude(39.25)
+                .build();
+        ServiceResponse accepted = response("response-id", acceptedRequest, profile);
+        accepted.setStatus("ACCEPTED");
+
+        when(requestRepository.findById("request-id")).thenReturn(Optional.of(acceptedRequest));
+        when(responseRepository.findByServiceRequestIdAndStatus("request-id", "ACCEPTED"))
+                .thenReturn(Optional.of(accepted));
+        when(userRepository.findByEmail(customer.getEmail())).thenReturn(Optional.of(customer));
+        when(userRepository.findByEmail(professional.getEmail())).thenReturn(Optional.of(professional));
+
+        var customerRoute = marketplaceService.getNavigationDetails(
+                customer.getEmail(), "request-id");
+        var professionalRoute = marketplaceService.getNavigationDetails(
+                professional.getEmail(), "request-id");
+
+        assertEquals("Test user's saved location", customerRoute.getDestinationName());
+        assertEquals(-6.75, customerRoute.getDestinationLatitude());
+        assertEquals(39.25, customerRoute.getDestinationLongitude());
+        assertEquals("Test user's service location", professionalRoute.getDestinationName());
+        assertEquals(-6.8, professionalRoute.getDestinationLatitude());
+        assertEquals(39.2, professionalRoute.getDestinationLongitude());
+
+        User stranger = user("stranger-id", "stranger@example.com", "NORMAL");
+        when(userRepository.findByEmail(stranger.getEmail())).thenReturn(Optional.of(stranger));
+        assertThrows(ApiExceptionDto.class,
+                () -> marketplaceService.getNavigationDetails(stranger.getEmail(), "request-id"));
+    }
+
+    private static ServiceResponse response(
             String id, ServiceRequest request, ProfessionalProfile profile) {
-        var response = com.hpote.backend.service.models.ServiceResponse.builder()
+        var response = ServiceResponse.builder()
                 .serviceRequest(request)
                 .professionalProfile(profile)
                 .status("SUBMITTED")

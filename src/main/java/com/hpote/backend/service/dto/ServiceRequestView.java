@@ -1,6 +1,8 @@
 package com.hpote.backend.service.dto;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.hpote.backend.service.models.ServiceRequest;
 
@@ -17,6 +19,7 @@ public class ServiceRequestView {
     String professionName;
     String description;
     String pictureUrl;
+    List<String> pictureUrls;
     Double latitude;
     Double longitude;
     String status;
@@ -24,6 +27,16 @@ public class ServiceRequestView {
     LocalDateTime createdAt;
 
     public static ServiceRequestView from(ServiceRequest request, String assignedProfessionalId) {
+        List<String> pictureUrls = new ArrayList<>();
+        if (request.getPictureUrl() != null && !request.getPictureUrl().isBlank()) {
+            pictureUrls.add(request.getPictureUrl());
+        }
+        if (request.getAdditionalPictureUrls() != null) {
+            request.getAdditionalPictureUrls().stream()
+                    .filter(url -> url != null && !url.isBlank())
+                    .filter(url -> !pictureUrls.contains(url))
+                    .forEach(pictureUrls::add);
+        }
         return ServiceRequestView.builder()
                 .id(request.getId())
                 .requesterId(request.getRequester().getId())
@@ -32,6 +45,7 @@ public class ServiceRequestView {
                 .professionName(request.getProfession().getName())
                 .description(request.getDescription())
                 .pictureUrl(request.getPictureUrl())
+                .pictureUrls(pictureUrls)
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .status(request.getStatus().getName())

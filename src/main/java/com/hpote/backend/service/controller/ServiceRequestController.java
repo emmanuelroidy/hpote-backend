@@ -2,7 +2,9 @@ package com.hpote.backend.service.controller;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,9 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.hpote.backend.common.ApiResponseDto;
 import com.hpote.backend.service.dto.CreateServiceRequest;
 import com.hpote.backend.service.dto.CreateServiceResponse;
+import com.hpote.backend.service.dto.RequestNavigationView;
 import com.hpote.backend.service.dto.ServiceRequestView;
 import com.hpote.backend.service.dto.ServiceResponseView;
 import com.hpote.backend.service.service.ServiceMarketplaceService;
+import com.hpote.backend.service.service.GraphHopperRoutingService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class ServiceRequestController {
 
     private final ServiceMarketplaceService marketplaceService;
+    private final GraphHopperRoutingService routingService;
 
     @PostMapping
     public ResponseEntity<ApiResponseDto<ServiceRequestView>> createRequest(
@@ -41,6 +46,33 @@ public class ServiceRequestController {
     public ResponseEntity<ApiResponseDto<List<ServiceRequestView>>> getMyRequests(Principal principal) {
         return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Your service requests",
                 marketplaceService.getMyRequests(principal.getName())));
+    }
+
+    @GetMapping("/{requestId}/navigation")
+    public ResponseEntity<ApiResponseDto<RequestNavigationView>> getNavigationDetails(
+            Principal principal, @PathVariable String requestId) {
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Navigation details retrieved",
+                marketplaceService.getNavigationDetails(principal.getName(), requestId)));
+    }
+
+    @GetMapping("/{requestId}/route")
+    public ResponseEntity<ApiResponseDto<Map<String, Object>>> getRoute(
+            Principal principal,
+            @PathVariable String requestId,
+            @RequestParam double fromLatitude,
+            @RequestParam double fromLongitude,
+            @RequestParam String profile,
+            @RequestParam(defaultValue = "recommended") String weighting) {
+        RequestNavigationView destination =
+                marketplaceService.getNavigationDetails(principal.getName(), requestId);
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Route retrieved",
+                routingService.route(
+                        fromLatitude,
+                        fromLongitude,
+                        destination.getDestinationLatitude(),
+                        destination.getDestinationLongitude(),
+                        profile,
+                        weighting)));
     }
 
     @GetMapping("/available")

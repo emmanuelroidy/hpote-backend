@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class CreateServiceRequest {
 
@@ -19,6 +21,9 @@ public class CreateServiceRequest {
 
     @Size(max = 2048)
     private String pictureUrl;
+
+    @Size(max = 5)
+    private List<@NotBlank @Size(max = 2048) String> pictureUrls;
 
     @NotNull
     @DecimalMin("-90.0")
