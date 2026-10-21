@@ -62,6 +62,27 @@ inactivity and have limited database storage. Render's free services also
 cannot send outbound SMTP on ports 25, 465, or 587, so email-based features
 need a mail provider/API approach that works within that restriction.
 
+### Optional initial administrator bootstrap
+
+To create the initial administrator on startup, configure all four environment
+variables on the backend service:
+
+| Variable | Example |
+| --- | --- |
+| `BOOTSTRAP_ADMIN_NAME` | `Emmanuel Roidy` |
+| `BOOTSTRAP_ADMIN_EMAIL` | `admin@example.com` |
+| `BOOTSTRAP_ADMIN_PHONE` | A unique phone number |
+| `BOOTSTRAP_ADMIN_PASSWORD` | A new 16–72 byte password |
+
+Set the password only in the provider's secret environment settings. Do not
+reuse a password shared in chat or commit a password to source control. The
+bootstrap runs only when all four values are present. It hashes the password
+and creates the account only if the email is unused; it never changes an
+existing account or password. If the email belongs to a non-admin account, or
+the phone is already in use, bootstrap logs an error and makes no account
+changes; resolve the conflict explicitly in the admin portal. Once the account
+exists, these variables can be removed.
+
 For the Postman collection and request-by-request walkthrough, see the
 [Postman API guide](./docs/POSTMAN-API-GUIDE.md) and import
 [HpOtE.postman_collection.json](./postman/HpOtE.postman_collection.json).
