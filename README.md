@@ -32,6 +32,36 @@ Start locally with `./mvnw spring-boot:run` and run tests with `./mvnw test`.
 The application initializes the default roles, professions, and service states
 on startup. Hibernate currently updates the schema automatically.
 
+## Free hosting on Render
+
+The repository includes a Render Blueprint (`render.yaml`) and a `render`
+Spring profile for deploying the Dockerized API against PostgreSQL. A simple
+free setup is:
+
+1. Create a Supabase Free project and copy its PostgreSQL connection details.
+   Set `DB_URL` to a JDBC URL such as
+   `jdbc:postgresql://<host>:5432/postgres?sslmode=require`, and set
+   `DB_USERNAME` and `DB_PASSWORD` from the connection details. Use Supabase's
+   session pooler connection if the direct database host is unreachable from
+   Render.
+2. In Render, create a Blueprint from this repository and provide the prompted
+   environment values. Set `JWT_SECRET` to a new random value with at least 32
+   UTF-8 bytes, and set `APP_CORS_ALLOWED_ORIGINS` to the exact HTTPS origins
+   of the deployed portal and any browser-based app.
+3. Wait for the service deployment to finish, then use the generated
+   `https://<service-name>.onrender.com` base URL as the backend URL in the
+   portal and app.
+
+Do not commit database passwords, JWT secrets, or other credentials. Enter
+them only in the hosting provider's environment settings. Render's free web
+service sleeps after 15 minutes without traffic and can take about a minute to
+wake. Its local filesystem is temporary; uploaded request images will not
+survive restarts or redeploys. Configure persistent external object storage
+before relying on uploads. Supabase Free projects may pause after one week of
+inactivity and have limited database storage. Render's free services also
+cannot send outbound SMTP on ports 25, 465, or 587, so email-based features
+need a mail provider/API approach that works within that restriction.
+
 For the Postman collection and request-by-request walkthrough, see the
 [Postman API guide](./docs/POSTMAN-API-GUIDE.md) and import
 [HpOtE.postman_collection.json](./postman/HpOtE.postman_collection.json).
