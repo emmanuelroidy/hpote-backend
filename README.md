@@ -25,6 +25,8 @@ Configure these environment variables before starting the application:
 | `PORT` | Optional HTTP port; defaults to `8080` |
 | `APP_CORS_ALLOWED_ORIGINS` | Optional comma-separated browser origins; defaults to local portal and Flutter web URLs |
 | `GRAPHHOPPER_API_KEY` | Optional GraphHopper Directions API key; required for in-app routes and must stay on the backend |
+| `LIBRETRANSLATE_URL` | Optional local LibreTranslate `/translate` endpoint; defaults to `http://localhost:5001/translate` |
+| `LIBRETRANSLATE_API_KEY` | Optional key if the local LibreTranslate instance is configured to require one |
 
 Start locally with `./mvnw spring-boot:run` and run tests with `./mvnw test`.
 The application initializes the default roles, professions, and service states
@@ -147,6 +149,27 @@ if they do not already have an assignment. The API prevents self-blocking/self-d
 demoting the last administrator. Changing a user away from `PROFESSIONAL`
 clears their profession assignments. The public `GET /api/professions` only
 returns active professions.
+
+## App translations
+
+The app supports English and Swahili and can select other language tags as
+translation dictionaries are added. Admins manage dictionary entries in the
+operations portal under **Translations**. Dictionary entries take precedence;
+only missing text is sent to the configured LibreTranslate service. Generated
+translations are saved as editable automatic entries. The app and backend do
+not send text to a public translation provider.
+
+To run the free, open-source translator locally, start LibreTranslate on host
+port `5001` with English and Swahili models enabled:
+
+```sh
+docker run --rm -p 5001:5000 libretranslate/libretranslate --load-only en,sw
+```
+
+Set `LIBRETRANSLATE_URL` if the service uses a different address. App dictionary
+and translation-resolution APIs are public under `/api/public/translations`;
+dictionary editing endpoints under `/api/admin/translations` require an
+administrator JWT.
 
 ## Request-photo upload
 

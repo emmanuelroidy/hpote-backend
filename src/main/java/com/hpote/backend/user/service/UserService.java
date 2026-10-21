@@ -11,12 +11,14 @@ import java.util.List;
 import java.security.SecureRandom;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.hpote.backend.user.model.User;
 import com.hpote.backend.user.model.UserRole;
@@ -25,6 +27,9 @@ import com.hpote.backend.user.repository.UserRoleRepository;
 import com.hpote.backend.professional.repository.ProfessionRepository;
 import com.hpote.backend.user.dto.LoginResponse;
 import com.hpote.backend.user.dto.LoginRequest;
+import com.hpote.backend.user.dto.UpdateProfileRequest;
+import com.hpote.backend.user.dto.UpdateProfileResponse;
+import com.hpote.backend.user.dto.UserView;
 import com.hpote.backend.common.ApiExceptionDto;
 
 @Service
@@ -94,6 +99,39 @@ public class UserService {
                 .build();
 
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public UpdateProfileResponse updateProfile(String currentUsername, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(currentUsername)
+                .or(() -> userRepository.findByPhone(currentUsername))
+                .orElseThrow(() -> new ApiExceptionDto("Account not found"));
+
+        if ("PROFESSIONAL".equals(user.getRole().getName())) {
+            List<UUID> requestedIds = request.professionIds();
+            if (requestedIds == null || requestedIds.isEmpty()) {
+                throw new ApiExceptionDto("A professional must keep at least one profession");
+            }
+            Set<String> professionIds = requestedIds.stream()
+                    .map(UUID::toString)
+                    .collect(Collectors.toSet());
+            if (professionIds.size() != requestedIds.size()) {
+                throw new ApiExceptionDto("Duplicate profession IDs are not allowed");
+            }
+            Set<Profession> professions = new HashSet<>(professionRepository.findAllById(professionIds));
+            if (professions.size() != professionIds.size()
+                    || professions.stream().anyMatch(profession -> !Boolean.TRUE.equals(profession.getIsActive()))) {
+                throw new ApiExceptionDto("Invalid profession IDs");
+            }
+            user.setProfessions(professions);
+        }
+
+        user.setName(request.name().trim());
+        user.setProfilePhoto(request.profilePhoto() == null || request.profilePhoto().isBlank()
+                ? null
+                : request.profilePhoto().trim());
+        User savedUser = userRepository.save(user);
+        return new UpdateProfileResponse(UserView.from(savedUser), jwtUtil.generateToken(savedUser));
     }
 
     // ================= LOGIN =================

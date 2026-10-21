@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hpote.backend.admin.dto.AdminOverviewView;
+import com.hpote.backend.admin.dto.AdminUserUpdateView;
 import com.hpote.backend.admin.dto.ProfessionRequest;
+import com.hpote.backend.admin.dto.UpdateAdminUserRequest;
 import com.hpote.backend.admin.dto.UpdateUserProfessionsRequest;
 import com.hpote.backend.admin.dto.UpdateUserRoleRequest;
 import com.hpote.backend.admin.dto.UpdateUserStatusRequest;
@@ -65,6 +67,15 @@ public class AdminController {
     @GetMapping("/users/{id}")
     public ResponseEntity<ApiResponseDto<UserView>> user(@PathVariable String id) {
         return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "User retrieved", adminService.user(id)));
+    }
+
+    @PutMapping("/users/{id}")
+    public ResponseEntity<ApiResponseDto<AdminUserUpdateView>> updateUser(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateAdminUserRequest request,
+            Principal principal) {
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "User updated",
+                adminService.updateUser(id, request, principal.getName())));
     }
 
     @PatchMapping("/users/{id}/status")

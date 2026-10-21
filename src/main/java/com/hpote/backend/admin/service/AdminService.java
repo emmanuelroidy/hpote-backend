@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hpote.backend.admin.dto.AdminOverviewView;
+import com.hpote.backend.admin.dto.AdminUserUpdateView;
 import com.hpote.backend.admin.dto.ProfessionRequest;
+import com.hpote.backend.admin.dto.UpdateAdminUserRequest;
+import com.hpote.backend.common.JwtUtil;
 import com.hpote.backend.common.ApiExceptionDto;
 import com.hpote.backend.professional.models.Profession;
 import com.hpote.backend.professional.repository.ProfessionRepository;
@@ -35,6 +38,7 @@ public class AdminService {
     private final UserRoleRepository userRoleRepository;
     private final ProfessionRepository professionRepository;
     private final ServiceRequestRepository serviceRequestRepository;
+    private final JwtUtil jwtUtil;
 
     @Transactional(readOnly = true)
     public AdminOverviewView overview() {
@@ -61,6 +65,58 @@ public class AdminService {
     @Transactional(readOnly = true)
     public UserView user(String rawId) {
         return UserView.from(findUser(rawId));
+    }
+
+    @Transactional
+    public AdminUserUpdateView updateUser(String rawId, UpdateAdminUserRequest request, String actor) {
+        User user = findUser(rawId);
+        boolean updatingOwnAccount = isActor(user, actor);
+        String name = request.name().trim();
+        String phone = request.phone().trim();
+        String email = request.email() == null || request.email().isBlank()
+                ? null
+                : request.email().trim().toLowerCase(Locale.ROOT);
+
+        userRepository.findByPhone(phone)
+                .filter(existing -> !existing.getId().equals(user.getId()))
+                .ifPresent(existing -> {
+                    throw new ApiExceptionDto("Phone already registered");
+                });
+        if (email != null) {
+            userRepository.findByEmail(email)
+                    .filter(existing -> !existing.getId().equals(user.getId()))
+                    .ifPresent(existing -> {
+                        throw new ApiExceptionDto("Email already registered");
+                    });
+        }
+
+        String roleName = request.role().trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_ROLES.contains(roleName)) {
+            throw new ApiExceptionDto("Role must be NORMAL, PROFESSIONAL, or ADMIN");
+        }
+        if ("ADMIN".equals(user.getRole().getName()) && !"ADMIN".equals(roleName)) {
+            ensureNotSelf(user, actor, "demote");
+            if (userRepository.countByRole_Name("ADMIN") <= 1
+                    || (user.isEnabled()
+                    && userRepository.countByRole_NameAndEnabled("ADMIN", true) <= 1)) {
+                throw new ApiExceptionDto("Cannot demote the last enabled administrator");
+            }
+        }
+
+        UserRole role = userRoleRepository.findByName(roleName)
+                .orElseThrow(() -> new ApiExceptionDto("Role not found: " + roleName));
+        user.setName(name);
+        user.setPhone(phone);
+        user.setEmail(email);
+        user.setRole(role);
+        if (!"PROFESSIONAL".equals(roleName)) {
+            user.getProfessions().clear();
+        } else {
+            user.setProfessions(resolveActiveProfessions(request.professionIds()));
+        }
+        User saved = userRepository.save(user);
+        String refreshedToken = updatingOwnAccount ? jwtUtil.generateToken(saved) : null;
+        return new AdminUserUpdateView(UserView.from(saved), refreshedToken);
     }
 
     @Transactional
@@ -210,8 +266,13 @@ public class AdminService {
     }
 
     private void ensureNotSelf(User user, String actor, String action) {
-        if (actor != null && (actor.equalsIgnoreCase(user.getEmail()) || actor.equals(user.getPhone()))) {
+        if (isActor(user, actor)) {
             throw new ApiExceptionDto("You cannot " + action + " your own account");
         }
+    }
+
+    private boolean isActor(User user, String actor) {
+        return actor != null
+                && (actor.equalsIgnoreCase(user.getEmail()) || actor.equals(user.getPhone()));
     }
 }

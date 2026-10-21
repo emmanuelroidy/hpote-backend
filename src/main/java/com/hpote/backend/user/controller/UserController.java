@@ -7,6 +7,8 @@ import com.hpote.backend.user.dto.LoginResponse;
 import com.hpote.backend.user.dto.ResetPasswordRequest;
 import com.hpote.backend.user.dto.UserRegisterRequest;
 import com.hpote.backend.user.dto.UserView;
+import com.hpote.backend.user.dto.UpdateProfileRequest;
+import com.hpote.backend.user.dto.UpdateProfileResponse;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
@@ -58,6 +60,14 @@ public class UserController {
         }
         return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "User retrieved successfully",
                 UserView.from(user)));
+    }
+
+    @PutMapping("/me/profile")
+    public ResponseEntity<ApiResponseDto<UpdateProfileResponse>> updateProfile(
+            @Validated @RequestBody UpdateProfileRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(new ApiResponseDto<>(true, 200, "Profile updated successfully",
+                userService.updateProfile(authentication.getName(), request)));
     }
 
     @GetMapping("/all")
