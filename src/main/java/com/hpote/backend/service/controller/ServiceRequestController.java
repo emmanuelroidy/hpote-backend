@@ -21,7 +21,7 @@ import com.hpote.backend.service.dto.RequestNavigationView;
 import com.hpote.backend.service.dto.ServiceRequestView;
 import com.hpote.backend.service.dto.ServiceResponseView;
 import com.hpote.backend.service.service.ServiceMarketplaceService;
-import com.hpote.backend.service.service.GraphHopperRoutingService;
+import com.hpote.backend.service.service.RoutePlanningService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class ServiceRequestController {
 
     private final ServiceMarketplaceService marketplaceService;
-    private final GraphHopperRoutingService routingService;
+    private final RoutePlanningService routingService;
 
     @PostMapping
     public ResponseEntity<ApiResponseDto<ServiceRequestView>> createRequest(

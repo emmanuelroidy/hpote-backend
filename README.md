@@ -24,7 +24,7 @@ Configure these environment variables before starting the application:
 | `MAIL_PASSWORD` | SMTP account password |
 | `PORT` | Optional HTTP port; defaults to `8080` |
 | `APP_CORS_ALLOWED_ORIGINS` | Optional comma-separated browser origins; defaults to local portal and Flutter web URLs |
-| `GRAPHHOPPER_API_KEY` | Optional GraphHopper Directions API key; required for in-app routes and must stay on the backend |
+| `ROUTING_API_BASE_URL` | Optional URL for a Valhalla routing service; defaults to the public OpenStreetMap Germany Valhalla instance |
 | `LIBRETRANSLATE_URL` | Optional local LibreTranslate `/translate` endpoint; defaults to `http://localhost:5001/translate` |
 | `LIBRETRANSLATE_API_KEY` | Optional key if the local LibreTranslate instance is configured to require one |
 
@@ -126,7 +126,7 @@ All routes below require a JWT.
 | `GET` | `/api/service-requests/{id}/responses` | Request owner views quotes |
 | `POST` | `/api/service-requests/{id}/responses/{responseId}/accept` | Request owner chooses a professional |
 | `GET` | `/api/service-requests/{id}/navigation` | Customer or assigned professional gets their saved start coordinates and the other party's destination after acceptance |
-| `GET` | `/api/service-requests/{id}/route` | Get a GraphHopper route for an accepted request; query parameters: `fromLatitude`, `fromLongitude`, `profile` (`car`, `bike`, `foot`), and optional `weighting` (`recommended`, `fastest`, `shortest`) |
+| `GET` | `/api/service-requests/{id}/route` | Get a Valhalla route for an accepted request; query parameters: `fromLatitude`, `fromLongitude`, `profile` (`car`, `bike`, `foot`), and optional `weighting` (`recommended`, `fastest`, `shortest`) |
 | `POST` | `/api/service-requests/{id}/start` | Assigned professional starts the job |
 | `POST` | `/api/service-requests/{id}/complete` | Assigned professional marks the job complete |
 | `POST` | `/api/service-requests/{id}/cancel` | Request owner cancels an open request |
@@ -169,12 +169,13 @@ Requests move through `OPEN`, `ACCEPTED`, `IN_PROGRESS`, and `COMPLETED`, or
 from `OPEN` to `CANCELLED`. Once an owner accepts a response, other responses
 are closed and only that professional can advance the job.
 
-GraphHopper route requests are proxied by the authenticated backend so the API
-key is never shipped to the app. Set `GRAPHHOPPER_API_KEY` in the backend
-environment to enable in-app route geometry and turn instructions. The free
-GraphHopper Directions API tier still requires an API key. Without one, the app
-keeps the map and external map-app directions available and explains how to
-enable in-app routing.
+Route requests are proxied through the authenticated backend to a Valhalla
+service. The default public Valhalla instance does not require an API key and
+supports driving, cycling, and walking routes. It is a shared service, so
+availability and request limits are controlled by its operator; route
+coordinates are sent to that service. For production traffic or stricter
+location privacy, run your own Valhalla instance and set `ROUTING_API_BASE_URL`
+on the backend.
 
 ## Administration API
 
