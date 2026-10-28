@@ -31,15 +31,16 @@ public class RoutePlanningService {
     public RoutePlanningService(
             RestClient.Builder restClientBuilder,
             @Value("${app.routing.base-url:https://valhalla1.openstreetmap.de}") String baseUrl) {
+        this(createRestClient(restClientBuilder, baseUrl));
+    }
+
+    private static RestClient createRestClient(RestClient.Builder builder, String baseUrl) {
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(Duration.ofSeconds(20));
-        this(restClientBuilder
-                .baseUrl(baseUrl)
-                .requestFactory(requestFactory)
-                .build());
+        return builder.baseUrl(baseUrl).requestFactory(requestFactory).build();
     }
 
     public RoutePlanningService(RestClient restClient) {
