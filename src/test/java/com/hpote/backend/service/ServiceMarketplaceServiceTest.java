@@ -244,9 +244,17 @@ class ServiceMarketplaceServiceTest {
         assertEquals("Test user's saved location", customerRoute.getDestinationName());
         assertEquals(-6.75, customerRoute.getDestinationLatitude());
         assertEquals(39.25, customerRoute.getDestinationLongitude());
+        assertEquals(-6.8, customerRoute.getStartLatitude());
+        assertEquals(39.2, customerRoute.getStartLongitude());
+        assertEquals(-6.75, customerRoute.getEndLatitude());
+        assertEquals(39.25, customerRoute.getEndLongitude());
         assertEquals("Test user's service location", professionalRoute.getDestinationName());
         assertEquals(-6.8, professionalRoute.getDestinationLatitude());
         assertEquals(39.2, professionalRoute.getDestinationLongitude());
+        assertEquals(-6.75, professionalRoute.getStartLatitude());
+        assertEquals(39.25, professionalRoute.getStartLongitude());
+        assertEquals(-6.8, professionalRoute.getEndLatitude());
+        assertEquals(39.2, professionalRoute.getEndLongitude());
 
         User stranger = user("stranger-id", "stranger@example.com", "NORMAL");
         when(userRepository.findByEmail(stranger.getEmail())).thenReturn(Optional.of(stranger));

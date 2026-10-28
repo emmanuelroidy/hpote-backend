@@ -172,6 +172,18 @@ public class ServiceMarketplaceService {
                 .requesterName(request.getRequester().getName())
                 .professionalName(profile.getUser().getName())
                 .status(status)
+                .startLatitude(isAssignedProfessional
+                        ? profile.getLatitude()
+                        : request.getLatitude())
+                .startLongitude(isAssignedProfessional
+                        ? profile.getLongitude()
+                        : request.getLongitude())
+                .endLatitude(isAssignedProfessional
+                        ? request.getLatitude()
+                        : profile.getLatitude())
+                .endLongitude(isAssignedProfessional
+                        ? request.getLongitude()
+                        : profile.getLongitude())
                 .destinationName(isAssignedProfessional
                         ? request.getRequester().getName() + "'s service location"
                         : profile.getUser().getName() + "'s saved location")

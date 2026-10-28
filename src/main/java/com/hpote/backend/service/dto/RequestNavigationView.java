@@ -11,6 +11,10 @@ public class RequestNavigationView {
     String requesterName;
     String professionalName;
     String status;
+    Double startLatitude;
+    Double startLongitude;
+    Double endLatitude;
+    Double endLongitude;
     String destinationName;
     Double destinationLatitude;
     Double destinationLongitude;

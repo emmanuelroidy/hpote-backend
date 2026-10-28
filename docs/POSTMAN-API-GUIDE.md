@@ -157,6 +157,7 @@ profile.
 | `GET` | `/api/service-requests/available` | Available professional |
 | `GET` | `/api/service-requests/assigned` | Professional |
 | `GET` | `/api/service-requests/my-responses` | Professional |
+| `GET` | `/api/service-requests/{requestId}/navigation` | Customer or assigned professional after acceptance |
 | `POST` | `/api/service-requests/{requestId}/responses` | Matching professional |
 | `GET` | `/api/service-requests/{requestId}/responses` | Request owner |
 | `POST` | `/api/service-requests/{requestId}/responses/{responseId}/accept` | Request owner |
@@ -190,3 +191,11 @@ Submit a quote (currency must be a three-letter uppercase code):
 Requests transition from `OPEN` to `ACCEPTED`, `IN_PROGRESS`, and `COMPLETED`,
 or from `OPEN` to `CANCELLED`. Accepting one quote declines the competing
 quotes. Only the assigned professional can start or complete the request.
+
+After a quote is accepted, the navigation response returns
+`startLatitude`/`startLongitude` for the authenticated customer or
+professional and `endLatitude`/`endLongitude` for the other party's saved
+location. For a customer, the request location is the start and the
+professional's profile location is the end; for the assigned professional,
+the start and end are reversed. The legacy `destinationLatitude` and
+`destinationLongitude` fields remain aliases for the end coordinates.
