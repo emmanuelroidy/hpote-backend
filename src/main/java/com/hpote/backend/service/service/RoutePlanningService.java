@@ -138,6 +138,13 @@ public class RoutePlanningService {
             instruction.put("text", maneuver.getOrDefault("instruction", "Continue"));
             instruction.put("distance", requiredNumber(maneuver.get("length")) * 1000);
             instruction.put("time", requiredNumber(maneuver.get("time")) * 1000);
+            Object endShapeIndex = maneuver.get("end_shape_index");
+            if (endShapeIndex instanceof Number index
+                    && index.intValue() >= 0
+                    && index.intValue() < coordinates.size()) {
+                instruction.put("endShapeIndex", index.intValue());
+                instruction.put("location", coordinates.get(index.intValue()));
+            }
             instructions.add(instruction);
         }
 

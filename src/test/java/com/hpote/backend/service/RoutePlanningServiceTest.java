@@ -64,6 +64,8 @@ class RoutePlanningServiceTest {
         Map<?, ?> instruction = (Map<?, ?>) ((List<?>) path.get("instructions")).get(0);
         assertEquals("Drive northeast.", instruction.get("text"));
         assertEquals(100.0, instruction.get("distance"));
+        assertEquals(1, instruction.get("endShapeIndex"));
+        assertEquals(List.of(0.0, 0.0), instruction.get("location"));
     }
 
     @Test
@@ -76,13 +78,13 @@ class RoutePlanningServiceTest {
                           "trip": {
                             "status": 0,
                             "summary": {"length": 9.4, "time": 1200},
-                            "legs": [{"shape": "????", "maneuvers": [{"instruction": "Main", "length": 9.4, "time": 1200}]}]
+                            "legs": [{"shape": "????", "maneuvers": [{"instruction": "Main", "length": 9.4, "time": 1200, "end_shape_index": 1}]}]
                           },
                           "alternates": [{
                             "trip": {
                               "status": 0,
                               "summary": {"length": 8.1, "time": 1500},
-                              "legs": [{"shape": "????", "maneuvers": [{"instruction": "Short", "length": 8.1, "time": 1500}]}]
+                              "legs": [{"shape": "????", "maneuvers": [{"instruction": "Short", "length": 8.1, "time": 1500, "end_shape_index": 1}]}]
                             }
                           }]
                         }
@@ -116,7 +118,7 @@ class RoutePlanningServiceTest {
                     "summary": {"length": %s, "time": %s},
                     "legs": [{
                       "shape": "????",
-                      "maneuvers": [{"instruction": "%s", "length": 0.1, "time": 10}]
+                      "maneuvers": [{"instruction": "%s", "length": 0.1, "time": 10, "end_shape_index": 1}]
                     }]
                   }
                 }
