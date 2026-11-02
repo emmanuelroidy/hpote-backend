@@ -13,6 +13,7 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.MediaType;
@@ -20,17 +21,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.hpote.backend.common.ApiExceptionDto;
+import com.hpote.backend.media.model.StoredImageEntity;
+import com.hpote.backend.media.repository.StoredImageRepository;
 
 @Service
 public class MediaStorageService {
 
     private static final long MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    private final StoredImageRepository imageRepository;
     private final Path uploadDirectory;
     private final String publicBaseUrl;
 
     public MediaStorageService(
+            StoredImageRepository imageRepository,
             @Value("${app.media.upload-dir:uploads/customer-requests}") String uploadDirectory,
             @Value("${app.media.public-base-url:}") String publicBaseUrl) {
+        this.imageRepository = imageRepository;
         this.uploadDirectory = Path.of(uploadDirectory).toAbsolutePath().normalize();
         this.publicBaseUrl = publicBaseUrl == null ? "" : publicBaseUrl.trim().replaceAll("/+$", "");
     }
@@ -48,19 +54,17 @@ public class MediaStorageService {
             case "image/png" -> ".png";
             default -> throw new ApiExceptionDto("Only JPEG and PNG images are supported");
         };
+        String storedContentType = extension.equals(".jpg")
+                ? MediaType.IMAGE_JPEG_VALUE
+                : MediaType.IMAGE_PNG_VALUE;
 
         try {
             byte[] bytes = file.getBytes();
             if (bytes.length == 0 || bytes.length > MAX_IMAGE_BYTES || !isValidImage(bytes, extension)) {
                 throw new ApiExceptionDto("Uploaded file is not a valid image");
             }
-            Files.createDirectories(uploadDirectory);
             String id = UUID.randomUUID().toString();
-            Path destination = uploadDirectory.resolve(id + extension).normalize();
-            if (!destination.startsWith(uploadDirectory)) {
-                throw new ApiExceptionDto("Invalid upload path");
-            }
-            Files.write(destination, bytes);
+            imageRepository.save(new StoredImageEntity(id, storedContentType, bytes));
             String relativeUrl = "/api/media/images/" + id;
             return publicBaseUrl.isEmpty() ? relativeUrl : publicBaseUrl + relativeUrl;
         } catch (IOException exception) {
@@ -104,6 +108,15 @@ public class MediaStorageService {
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw new ApiExceptionDto("Image not found");
         }
+        var storedImage = imageRepository.findById(id.toString());
+        if (storedImage.isPresent()) {
+            StoredImageEntity image = storedImage.get();
+            return new StoredImage(
+                    new ByteArrayResource(image.getContent()),
+                    MediaType.parseMediaType(image.getContentType()));
+        }
+
+        // Continue serving files uploaded before image storage moved to the database.
         for (String extension : new String[] {".jpg", ".png"}) {
             Path file = uploadDirectory.resolve(id + extension).normalize();
             if (file.startsWith(uploadDirectory) && Files.isRegularFile(file)) {

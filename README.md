@@ -55,12 +55,13 @@ free setup is:
 Do not commit database passwords, JWT secrets, or other credentials. Enter
 them only in the hosting provider's environment settings. Render's free web
 service sleeps after 15 minutes without traffic and can take about a minute to
-wake. Its local filesystem is temporary; uploaded request images will not
-survive restarts or redeploys. Configure persistent external object storage
-before relying on uploads. Supabase Free projects may pause after one week of
-inactivity and have limited database storage. Render's free services also
-cannot send outbound SMTP on ports 25, 465, or 587, so email-based features
-need a mail provider/API approach that works within that restriction.
+wake. Its local filesystem is temporary, so uploaded images are stored in the
+configured PostgreSQL database and survive service restarts and redeploys.
+Database storage is limited; monitor usage as image uploads accumulate.
+Supabase Free projects may pause after one week of inactivity and have limited
+database storage. Render's free services also cannot send outbound SMTP on
+ports 25, 465, or 587, so email-based features need a mail provider/API
+approach that works within that restriction.
 
 ### Optional initial administrator bootstrap
 
@@ -244,8 +245,9 @@ and image dimensions are validated. The response is an API envelope with
 By default this URL is relative to the API origin, so clients should resolve
 it against their configured backend base URL. Set `APP_MEDIA_PUBLIC_BASE_URL`
 to the externally reachable API origin to receive an absolute URL instead.
-Files are stored under `APP_MEDIA_UPLOAD_DIR` (default
-`uploads/customer-requests`); mount/persist that directory in deployments.
+New uploads are stored in the PostgreSQL `media_images` table so they remain
+available across Render restarts and redeploys.
 `GET /api/media/images/{uuid}` serves the image and requires a valid bearer
-token as request photos may contain personal information. Configure
-`APP_MEDIA_PUBLIC_BASE_URL` when clients need an absolute image URL.
+token as request photos may contain personal information; app and portal image
+requests must include the signed-in user's token. Existing files in
+`APP_MEDIA_UPLOAD_DIR` remain readable as a legacy fallback.
