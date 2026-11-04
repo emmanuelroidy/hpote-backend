@@ -18,6 +18,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.hpote.backend.common.ApiExceptionDto;
+import com.hpote.backend.notification.service.NotificationService;
+import com.hpote.backend.reviews.repository.ServiceReviewRepository;
 import com.hpote.backend.professional.models.ProfessionalProfile;
 import com.hpote.backend.professional.models.Profession;
 import com.hpote.backend.professional.repository.ProfessionalRepository;
@@ -50,6 +52,10 @@ class ServiceMarketplaceServiceTest {
     private ServiceResponseRepository responseRepository;
     @Mock
     private ServiceStatusRepository statusRepository;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private ServiceReviewRepository reviewRepository;
 
     private ServiceMarketplaceService marketplaceService;
 
@@ -61,7 +67,9 @@ class ServiceMarketplaceServiceTest {
                 professionalRepository,
                 requestRepository,
                 responseRepository,
-                statusRepository);
+                statusRepository,
+                notificationService,
+                reviewRepository);
     }
 
     @Test

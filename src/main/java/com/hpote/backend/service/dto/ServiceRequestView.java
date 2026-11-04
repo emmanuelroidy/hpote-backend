@@ -25,8 +25,16 @@ public class ServiceRequestView {
     String status;
     String assignedProfessionalId;
     LocalDateTime createdAt;
+    boolean sharedToCommunity;
+    List<String> tags;
+    boolean hasReview;
 
     public static ServiceRequestView from(ServiceRequest request, String assignedProfessionalId) {
+        return from(request, assignedProfessionalId, false);
+    }
+
+    public static ServiceRequestView from(
+            ServiceRequest request, String assignedProfessionalId, boolean hasReview) {
         List<String> pictureUrls = new ArrayList<>();
         if (request.getPictureUrl() != null && !request.getPictureUrl().isBlank()) {
             pictureUrls.add(request.getPictureUrl());
@@ -51,6 +59,9 @@ public class ServiceRequestView {
                 .status(request.getStatus().getName())
                 .assignedProfessionalId(assignedProfessionalId)
                 .createdAt(request.getCreatedAt())
+                .sharedToCommunity(request.isSharedToCommunity())
+                .tags(request.getTags())
+                .hasReview(hasReview)
                 .build();
     }
 }

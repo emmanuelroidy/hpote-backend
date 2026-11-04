@@ -24,6 +24,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import com.hpote.backend.common.ApiExceptionDto;
+import com.hpote.backend.assistant.service.AiTranslationService;
 import com.hpote.backend.translation.dto.TranslationEntryRequest;
 import com.hpote.backend.translation.model.TranslationEntry;
 import com.hpote.backend.translation.repository.TranslationEntryRepository;
@@ -38,6 +39,7 @@ public class TranslationService {
     private static final String SOURCE_LANGUAGE = "en";
 
     private final TranslationEntryRepository translationRepository;
+    private final AiTranslationService aiTranslationService;
 
     @Value("${app.translation.libretranslate-url:${LIBRETRANSLATE_URL:http://localhost:5001/translate}}")
     private String libreTranslateUrl;
@@ -100,6 +102,12 @@ public class TranslationService {
 
     @Transactional
     public Map<String, String> resolve(String rawLanguageCode, List<String> rawTexts) {
+        return resolve(rawLanguageCode, rawTexts, false);
+    }
+
+    @Transactional
+    public Map<String, String> resolve(
+            String rawLanguageCode, List<String> rawTexts, boolean useAiForMissingUiLabels) {
         String language = normalizeLanguage(rawLanguageCode);
         List<String> texts = rawTexts.stream().distinct().toList();
         if (SOURCE_LANGUAGE.equals(language)) {
@@ -119,7 +127,9 @@ public class TranslationService {
         }
 
         if (!missing.isEmpty()) {
-            List<String> generated = translateWithLibreTranslate(missing, language);
+            List<String> generated = useAiForMissingUiLabels
+                    ? translateWithGeminiOrLibreTranslate(missing, language)
+                    : translateWithLibreTranslate(missing, language);
             for (int index = 0; index < missing.size(); index++) {
                 String sourceText = missing.get(index);
                 String translatedText = index < generated.size() ? generated.get(index) : sourceText;
@@ -131,6 +141,15 @@ public class TranslationService {
             }
         }
         return translations;
+    }
+
+    private List<String> translateWithGeminiOrLibreTranslate(List<String> missing, String language) {
+        try {
+            return aiTranslationService.translateUiLabels(missing, language);
+        } catch (ApiExceptionDto exception) {
+            log.warn("Gemini UI translation failed; using the configured translator");
+            return translateWithLibreTranslate(missing, language);
+        }
     }
 
     @Transactional(readOnly = true)

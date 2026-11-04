@@ -4,16 +4,19 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hpote.backend.common.ApiExceptionDto;
+import com.hpote.backend.notification.service.NotificationService;
 import com.hpote.backend.professional.models.ProfessionalProfile;
 import com.hpote.backend.professional.models.Profession;
 import com.hpote.backend.professional.repository.ProfessionalRepository;
 import com.hpote.backend.professional.repository.ProfessionRepository;
+import com.hpote.backend.reviews.repository.ServiceReviewRepository;
 import com.hpote.backend.service.dto.CreateServiceRequest;
 import com.hpote.backend.service.dto.CreateServiceResponse;
 import com.hpote.backend.service.dto.RequestNavigationView;
@@ -40,6 +43,8 @@ public class ServiceMarketplaceService {
     private final ServiceRequestRepository requestRepository;
     private final ServiceResponseRepository responseRepository;
     private final ServiceStatusRepository statusRepository;
+    private final NotificationService notificationService;
+    private final ServiceReviewRepository reviewRepository;
 
     @Transactional
     public ServiceRequestView createRequest(String username, CreateServiceRequest input) {
@@ -74,6 +79,8 @@ public class ServiceMarketplaceService {
                         : new ArrayList<>(pictureUrls.subList(1, pictureUrls.size())))
                 .latitude(input.getLatitude())
                 .longitude(input.getLongitude())
+                .sharedToCommunity(Boolean.TRUE.equals(input.getShareToCommunity()))
+                .tags(normalizeTags(input.getTags()))
                 .status(getStatus("OPEN"))
                 .build();
 
@@ -86,7 +93,9 @@ public class ServiceMarketplaceService {
         return requestRepository.findByRequesterIdOrderByCreatedAtDesc(requester.getId())
                 .stream()
                 .map(request -> ServiceRequestView.from(
-                        request, acceptedProfessionalId(request.getId())))
+                        request,
+                        acceptedProfessionalId(request.getId()),
+                        reviewRepository.existsByServiceRequestId(request.getId())))
                 .toList();
     }
 
@@ -243,7 +252,11 @@ public class ServiceMarketplaceService {
                 .estimatedDays(input.getEstimatedDays())
                 .status("SUBMITTED")
                 .build();
-        return ServiceResponseView.from(responseRepository.save(response));
+        ServiceResponse saved = responseRepository.save(response);
+        notificationService.create(request.getRequester(), "NEW_QUOTE", "A professional replied",
+                profile.getUser().getName() + " sent you a quote for " + request.getProfession().getName(),
+                request.getId());
+        return ServiceResponseView.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -278,6 +291,9 @@ public class ServiceMarketplaceService {
                 .forEach(response -> response.setStatus(
                         response.getId().equals(accepted.getId()) ? "ACCEPTED" : "DECLINED"));
         request.setStatus(getStatus("ACCEPTED"));
+        notificationService.create(accepted.getProfessionalProfile().getUser(), "QUOTE_ACCEPTED",
+                "Your quote was accepted", requester.getName() + " selected you for "
+                        + request.getProfession().getName(), request.getId());
         return ServiceRequestView.from(request, accepted.getProfessionalProfile().getUser().getId());
     }
 
@@ -289,6 +305,9 @@ public class ServiceMarketplaceService {
             throw new ApiExceptionDto("Only an accepted request can be started");
         }
         request.setStatus(getStatus("IN_PROGRESS"));
+        notificationService.create(request.getRequester(), "JOB_STARTED", "Work has started",
+                accepted.getProfessionalProfile().getUser().getName() + " started your "
+                        + request.getProfession().getName() + " job", request.getId());
         return ServiceRequestView.from(request, accepted.getProfessionalProfile().getUser().getId());
     }
 
@@ -300,6 +319,9 @@ public class ServiceMarketplaceService {
             throw new ApiExceptionDto("Only an in-progress request can be completed");
         }
         request.setStatus(getStatus("COMPLETED"));
+        notificationService.create(request.getRequester(), "JOB_COMPLETED", "Work marked complete",
+                accepted.getProfessionalProfile().getUser().getName() + " completed your "
+                        + request.getProfession().getName() + " job", request.getId());
         return ServiceRequestView.from(request, accepted.getProfessionalProfile().getUser().getId());
     }
 
@@ -377,5 +399,15 @@ public class ServiceMarketplaceService {
                 * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
         double boundedA = Math.min(1.0, Math.max(0.0, a));
         return 6371.0 * 2 * Math.atan2(Math.sqrt(boundedA), Math.sqrt(1 - boundedA));
+    }
+
+    private List<String> normalizeTags(List<String> suppliedTags) {
+        if (suppliedTags == null) return new ArrayList<>();
+        return suppliedTags.stream()
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(tag -> tag.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT))
+                .distinct()
+                .limit(8)
+                .toList();
     }
 }

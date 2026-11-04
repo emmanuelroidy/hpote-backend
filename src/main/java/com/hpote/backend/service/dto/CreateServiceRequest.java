@@ -25,6 +25,11 @@ public class CreateServiceRequest {
     @Size(max = 5)
     private List<@NotBlank @Size(max = 2048) String> pictureUrls;
 
+    private Boolean shareToCommunity;
+
+    @Size(max = 8)
+    private List<@NotBlank @Size(max = 30) String> tags;
+
     @NotNull
     @DecimalMin("-90.0")
     @DecimalMax("90.0")

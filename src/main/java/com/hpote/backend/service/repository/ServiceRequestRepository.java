@@ -4,12 +4,15 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
 
 import com.hpote.backend.service.models.ServiceRequest;
 
 public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, String> {
 
     List<ServiceRequest> findAllByOrderByCreatedAtDesc();
+
+    List<ServiceRequest> findBySharedToCommunityTrueOrderByCreatedAtDesc(Pageable pageable);
 
     List<ServiceRequest> findByRequesterIdOrderByCreatedAtDesc(String requesterId);
 

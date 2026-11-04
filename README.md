@@ -27,6 +27,8 @@ Configure these environment variables before starting the application:
 | `ROUTING_API_BASE_URL` | Optional URL for a Valhalla routing service; defaults to the public OpenStreetMap Germany Valhalla instance |
 | `LIBRETRANSLATE_URL` | Optional local LibreTranslate `/translate` endpoint; defaults to `http://localhost:5001/translate` |
 | `LIBRETRANSLATE_API_KEY` | Optional key if the local LibreTranslate instance is configured to require one |
+| `GEMINI_API_KEY` | Optional Google AI Studio key for authenticated, fixed-topic help and static UI-label translation |
+| `GEMINI_MODEL` | Optional Gemini model name; defaults to `gemini-3.5-flash-lite` |
 
 Start locally with `./mvnw spring-boot:run` and run tests with `./mvnw test`.
 The application initializes the default roles, professions, and service states
@@ -118,6 +120,7 @@ All routes below require a JWT.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
+| `POST` | `/api/assistant/help` | Get a short app-use guide for a predefined topic and language; requires a JWT |
 | `POST` | `/api/service-requests` | Customer creates a request |
 | `GET` | `/api/service-requests/mine` | List the caller's requests |
 | `GET` | `/api/service-requests/available` | Professional finds open matching requests within their radius |
@@ -131,6 +134,26 @@ All routes below require a JWT.
 | `POST` | `/api/service-requests/{id}/start` | Assigned professional starts the job |
 | `POST` | `/api/service-requests/{id}/complete` | Assigned professional marks the job complete |
 | `POST` | `/api/service-requests/{id}/cancel` | Request owner cancels an open request |
+| `GET` | `/api/service-requests/{id}/messages` | Read the latest 100 messages for an assigned job |
+| `POST` | `/api/service-requests/{id}/messages` | Send a message to the other party after a professional is selected |
+
+Messages are limited to the customer and the selected professional, and are
+available while a request is accepted, in progress, or completed. Send a
+message as `{"content":"I will arrive at 10."}`. The mobile app refreshes the
+open conversation periodically; this is in-app messaging, not push delivery.
+
+## Notifications API
+
+All routes below require a JWT. Notifications are private to the authenticated
+recipient and are generated for new quotes, quote acceptance, job start and
+completion, and new service messages.
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/notifications` | List the caller's latest 50 notifications |
+| `GET` | `/api/notifications/unread-count` | Count unread notifications |
+| `POST` | `/api/notifications/{id}/read` | Mark one notification as read |
+| `POST` | `/api/notifications/read-all` | Mark all of the caller's notifications as read |
 
 Requests accept either the legacy `pictureUrl` string or a `pictureUrls` array
 with up to five authenticated image URLs. Responses include both fields so
@@ -214,10 +237,13 @@ returns active professions.
 
 The app supports English and Swahili and can select other language tags as
 translation dictionaries are added. Admins manage dictionary entries in the
-operations portal under **Translations**. Dictionary entries take precedence;
-only missing text is sent to the configured LibreTranslate service. Generated
-translations are saved as editable automatic entries. The app and backend do
-not send text to a public translation provider.
+operations portal under **Translations**. Dictionary entries take precedence.
+For authenticated app sessions, missing app-authored interface labels are sent
+to Gemini first and fall back to the configured LibreTranslate service if
+Gemini is unavailable. Before sign-in,
+the app uses LibreTranslate directly. Generated translations are saved as
+editable automatic entries. User-generated content such as messages, requests,
+reviews, names, and locations must not be submitted for automatic translation.
 
 To run the free, open-source translator locally, start LibreTranslate on host
 port `5001` with English and Swahili models enabled:
@@ -226,10 +252,22 @@ port `5001` with English and Swahili models enabled:
 docker run --rm -p 5001:5000 libretranslate/libretranslate --load-only en,sw
 ```
 
-Set `LIBRETRANSLATE_URL` if the service uses a different address. App dictionary
-and translation-resolution APIs are public under `/api/public/translations`;
-dictionary editing endpoints under `/api/admin/translations` require an
-administrator JWT.
+Set `LIBRETRANSLATE_URL` if the service uses a different address. The dictionary
+API is public under `/api/public/translations`. Its resolution endpoint uses
+LibreTranslate only. The authenticated Gemini resolver for app-authored labels
+is `/api/assistant/translations/resolve`; it accepts up to 20 labels, each at
+most 200 characters. Dictionary editing endpoints under
+`/api/admin/translations` require an administrator JWT.
+
+## In-app AI help
+
+The authenticated `POST /api/assistant/help` endpoint accepts only a predefined
+help-topic code and a language tag. It does not accept request descriptions,
+messages, names, or location. Configure `GEMINI_API_KEY` in local environment
+settings or Render's secret settings to enable the guide; without a key, the API
+returns a clear unavailable response. The app sends a request only after the
+user taps a help topic. Gemini's free-tier quotas and data-use terms may change;
+check the provider's current terms before enabling it in production.
 
 ## Request-photo upload
 
