@@ -1,0 +1,2 @@
+ALTER TABLE service_requests
+    ADD COLUMN IF NOT EXISTS shared_to_community BOOLEAN NOT NULL DEFAULT FALSE;

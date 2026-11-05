@@ -32,7 +32,11 @@ Configure these environment variables before starting the application:
 
 Start locally with `./mvnw spring-boot:run` and run tests with `./mvnw test`.
 The application initializes the default roles, professions, and service states
-on startup. Hibernate currently updates the schema automatically.
+on startup. Hibernate updates the schema automatically for local development.
+The Render profile runs versioned Flyway migrations from
+`src/main/resources/db/migration` before the application starts. Existing
+non-empty databases are baselined at version 0 so new migrations can run
+without dropping existing data.
 
 ## Free hosting on Render
 
@@ -53,6 +57,12 @@ free setup is:
 3. Wait for the service deployment to finish, then use the generated
    `https://<service-name>.onrender.com` base URL as the backend URL in the
    portal and app.
+
+Each Render deploy runs any unapplied Flyway migrations before starting the API.
+For example, `V1__add_shared_to_community.sql` adds the missing
+`shared_to_community` column to existing `service_requests` tables; existing
+rows default to not shared. Do not edit an already-applied migration. Add a new
+versioned SQL file for future schema changes.
 
 Do not commit database passwords, JWT secrets, or other credentials. Enter
 them only in the hosting provider's environment settings. Render's free web
