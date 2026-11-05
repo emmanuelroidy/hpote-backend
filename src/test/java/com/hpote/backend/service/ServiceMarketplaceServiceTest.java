@@ -26,6 +26,7 @@ import com.hpote.backend.professional.repository.ProfessionalRepository;
 import com.hpote.backend.professional.repository.ProfessionRepository;
 import com.hpote.backend.service.dto.CreateServiceRequest;
 import com.hpote.backend.service.dto.CreateServiceResponse;
+import com.hpote.backend.service.dto.ServiceResponseView;
 import com.hpote.backend.service.models.ServiceRequest;
 import com.hpote.backend.service.models.ServiceResponse;
 import com.hpote.backend.service.models.ServiceStatus;
@@ -181,6 +182,58 @@ class ServiceMarketplaceServiceTest {
         var available = marketplaceService.getAvailableRequests(professional.getEmail());
 
         assertEquals(2, available.size());
+    }
+
+    @Test
+    void excludesRequestsAlreadyAnsweredByThisProfessional() {
+        User professional = user("professional-id", "pro@example.com", "PROFESSIONAL");
+        Profession plumbing = profession("plumbing-id");
+        professional.setProfessions(new HashSet<>(Set.of(plumbing)));
+        ProfessionalProfile profile = ProfessionalProfile.builder()
+                .user(professional)
+                .profession(plumbing)
+                .latitude(-6.8)
+                .longitude(39.2)
+                .serviceRadiusKm(25.0)
+                .isAvailable(true)
+                .build();
+        profile.setId("profile-id");
+        ServiceRequest answered = request(plumbing, professional);
+        answered.setId("answered-request");
+        ServiceRequest unanswered = request(plumbing, professional);
+        unanswered.setId("unanswered-request");
+
+        when(userRepository.findByEmail(professional.getEmail())).thenReturn(Optional.of(professional));
+        when(professionalRepository.findByUserId(professional.getId())).thenReturn(Optional.of(profile));
+        when(responseRepository.findServiceRequestIdsByProfessionalProfileId("profile-id"))
+                .thenReturn(List.of("answered-request"));
+        when(requestRepository.findByStatus_NameAndProfession_IdOrderByCreatedAtDesc(
+                "OPEN", plumbing.getId())).thenReturn(List.of(answered, unanswered));
+
+        var available = marketplaceService.getAvailableRequests(professional.getEmail());
+
+        assertEquals(List.of("unanswered-request"),
+                available.stream().map(item -> item.getId()).toList());
+    }
+
+    @Test
+    void includesRequestPhotosInProfessionalResponseViews() {
+        User customer = user("customer-id", "customer@example.com", "NORMAL");
+        User professional = user("professional-id", "pro@example.com", "PROFESSIONAL");
+        ServiceRequest request = request(profession("profession-id"), customer);
+        request.setPictureUrl("/api/media/images/first");
+        request.setAdditionalPictureUrls(List.of("/api/media/images/second"));
+        ProfessionalProfile profile = ProfessionalProfile.builder()
+                .user(professional)
+                .build();
+        ServiceResponse response = response("response-id", request, profile);
+
+        ServiceResponseView view = ServiceResponseView.from(response);
+
+        assertEquals("/api/media/images/first", view.getPictureUrl());
+        assertEquals(
+                List.of("/api/media/images/first", "/api/media/images/second"),
+                view.getPictureUrls());
     }
 
     @Test

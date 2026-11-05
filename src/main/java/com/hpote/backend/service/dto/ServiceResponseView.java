@@ -2,6 +2,7 @@ package com.hpote.backend.service.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.hpote.backend.service.models.ServiceResponse;
 
@@ -14,6 +15,8 @@ public class ServiceResponseView {
     String id;
     String serviceRequestId;
     String requestDescription;
+    String pictureUrl;
+    List<String> pictureUrls;
     String professionalId;
     String professionalName;
     BigDecimal quoteAmount;
@@ -29,6 +32,9 @@ public class ServiceResponseView {
                 .id(response.getId())
                 .serviceRequestId(response.getServiceRequest().getId())
                 .requestDescription(response.getServiceRequest().getDescription())
+                .pictureUrl(response.getServiceRequest().getPictureUrl())
+                .pictureUrls(ServiceRequestView.from(
+                        response.getServiceRequest(), null).getPictureUrls())
                 .professionalId(profile.getUser().getId())
                 .professionalName(profile.getUser().getName())
                 .quoteAmount(response.getQuoteAmount())

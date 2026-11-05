@@ -42,6 +42,6 @@ public class PublicTranslationController {
     public ResponseEntity<ApiResponseDto<Map<String, String>>> resolve(
             @Valid @RequestBody ResolveTranslationsRequest request) {
         return ResponseEntity.ok(ApiResponseDto.success(
-                translationService.resolve(request.languageCode(), request.texts())));
+                    translationService.resolve(request.languageCode(), request.texts(), true)));
     }
 }

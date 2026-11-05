@@ -1,5 +1,6 @@
 package com.hpote.backend.service.service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -131,10 +132,13 @@ public class ServiceMarketplaceService {
             throw new ApiExceptionDto("Add a profession to your professional account");
         }
 
+        Set<String> respondedRequestIds = new HashSet<>(
+                responseRepository.findServiceRequestIdsByProfessionalProfileId(profile.getId()));
         return professionIds.stream()
                 .flatMap(professionId -> requestRepository
                         .findByStatus_NameAndProfession_IdOrderByCreatedAtDesc("OPEN", professionId)
                         .stream())
+                .filter(request -> !respondedRequestIds.contains(request.getId()))
                 .filter(request -> isWithinServiceRadius(request, profile))
                 .sorted((first, second) -> second.getCreatedAt().compareTo(first.getCreatedAt()))
                 .map(request -> ServiceRequestView.from(request, null))
