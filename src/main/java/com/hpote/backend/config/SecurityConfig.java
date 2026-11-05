@@ -1,7 +1,9 @@
 package com.hpote.backend.config;
 
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.DispatcherType;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -9,6 +11,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -27,6 +31,8 @@ import org.springframework.beans.factory.annotation.Value;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetails userDetailsService;
@@ -47,11 +53,15 @@ public class SecurityConfig {
 
             // Return 401 for anonymous access; reserve 403 for authenticated users without permission.
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(
-                    (request, response, exception) ->
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED)))
+                    (request, response, exception) -> {
+                        log.warn("Authentication required for {} {}",
+                                request.getMethod(), request.getServletPath());
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    }))
 
             // Endpoint access rules
             .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 // Public endpoints
                 .requestMatchers(
                     "/api/users/login",
@@ -74,6 +84,14 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterServletRegistration() {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(jwtAuthenticationFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

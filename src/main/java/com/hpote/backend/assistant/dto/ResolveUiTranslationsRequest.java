@@ -9,5 +9,5 @@ import jakarta.validation.constraints.Size;
 
 public record ResolveUiTranslationsRequest(
         @NotBlank @Pattern(regexp = "^[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})*$") @Size(max = 12) String languageCode,
-        @NotEmpty @Size(max = 20) List<@NotBlank @Size(max = 200) @Pattern(regexp = "^[^\\r\\n\\t]+$") String> texts) {
+        @NotEmpty @Size(max = 20) List<@NotBlank @Size(max = 200) String> texts) {
 }
